@@ -46,18 +46,23 @@ export function statusMsg(positions, equity) {
     return `📊 현재 포지션\n\nEquity: ${fmt(equity)} USDT\n총 증거금: ${fmt(totalMargin)} USDT\n총 비중: ${pct(totalWeight)} ${gauge(totalWeight)}\n총 미실현: ${sign(totalPnl)} USDT
 리스크: ${riskLabel(totalWeight)}\n\n${lines.join('\n\n━━━━━━━━━━━━━━\n\n')}`;
 }
-export function periodMsg(title, trades, equity) {
+export function periodMsg(title, trades, equity, exchangeHistory = false) {
     const sum = trades.reduce((a, t) => a + t.realizedPnl, 0);
+    const gross = trades.reduce((a, t) => a + (t.grossPnl ?? t.realizedPnl), 0);
+    const fees = trades.reduce((a, t) => a + (t.openFee || 0) + (t.closeFee || 0), 0);
+    const funding = trades.reduce((a, t) => a + (t.funding || 0), 0);
     const wins = trades.filter(t => t.realizedPnl > 0).length;
     const winRate = trades.length ? (wins / trades.length) * 100 : 0;
     const roi = equity && equity > 0 ? (sum / equity) * 100 : 0;
-    return `${title}\n\n청산 거래: ${trades.length}개\n승률: ${pct(winRate)}\n실현손익: ${sign(sum)} USDT${equity ? `\n계좌 대비: ${sign(roi)}%` : ''}`;
+    const best = trades.length ? Math.max(...trades.map(t => t.realizedPnl)) : 0;
+    const worst = trades.length ? Math.min(...trades.map(t => t.realizedPnl)) : 0;
+    return `${title}\n${exchangeHistory ? 'Bitget 히스토리 기준' : '봇 감지 기록 기준'}\n\n청산 거래: ${trades.length}개\n승률: ${pct(winRate)}\n실현손익: ${sign(sum)} USDT${equity ? `\n계좌 대비: ${sign(roi)}%` : ''}${exchangeHistory ? `\n\n총 PnL: ${sign(gross)} USDT\n수수료: -${fmt(fees)} USDT\n펀딩: ${sign(funding)} USDT` : ''}\n\n최고 손익: ${sign(best)} USDT\n최저 손익: ${sign(worst)} USDT`;
 }
 export function historyMsg(trades) {
     if (!trades.length)
         return '📭 최근 청산 기록 없음';
     const recent = trades.slice(-10).reverse();
-    return `🧾 최근 청산 기록\n\n${recent.map(t => `${sideEmoji(t.side)} ${t.symbol} ${t.side.toUpperCase()}\n손익 ${sign(t.realizedPnl)} USDT · 최대비중 ${pct(t.maxWeightPct)} · 보유 ${duration(t.closedAt - t.openedAt)}`).join('\n\n')}`;
+    return `🧾 최근 청산 기록\nBitget 최근 30일 기준\n\n${recent.map(t => `${sideEmoji(t.side)} ${t.symbol} ${t.side.toUpperCase()}\n손익 ${sign(t.realizedPnl)} USDT · 진입 ${fmt(t.avgPrice, 6)} → 청산 ${fmt(t.closePrice, 6)}\n보유 ${duration(t.closedAt - t.openedAt)}${t.source === 'bitget' ? ` · 수수료 -${fmt((t.openFee || 0) + (t.closeFee || 0))}` : ` · 최대비중 ${pct(t.maxWeightPct)}`}`).join('\n\n')}`;
 }
 export function equityMsg(equity, points) {
     const first = points[0]?.equity ?? equity;
@@ -67,7 +72,7 @@ export function equityMsg(equity, points) {
 }
 export function helpMsg() {
     return `🤖 Position Share Bot 명령어\n\n/status 현재 포지션
-/positions 현재 포지션 alias\n/today 오늘 청산 손익\n/week 최근 7일 청산 손익\n/month 최근 30일 청산 손익\n/history 최근 청산 10개\n/equity 계좌 Equity 요약\n/chatid 현재 방 chat_id 확인
+/positions 현재 포지션 alias\n/today 오늘 청산 손익\n/week 최근 7일 청산 손익\n/month 최근 30일 청산 손익\n/history Bitget 최근 30일 청산 10개\n/equity 계좌 Equity 요약\n/chatid 현재 방 chat_id 확인
 /resetstate 봇 저장 기록 초기화`;
 }
 export function resetMsg(openCount) {

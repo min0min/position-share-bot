@@ -33,6 +33,12 @@ export type ClosedTrade = {
   closePrice: number;
   maxMarginSize: number;
   addCount: number;
+  grossPnl?: number;
+  netProfit?: number;
+  funding?: number;
+  openFee?: number;
+  closeFee?: number;
+  source?: 'bot' | 'bitget';
 };
 
 export type EquityPoint = {

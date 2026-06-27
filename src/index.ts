@@ -1,8 +1,8 @@
-import { BitgetClient, BitgetPositionRaw } from './bitget/client.js';
+import { BitgetClient, BitgetHistoryPositionRaw, BitgetPositionRaw } from './bitget/client.js';
 import { TelegramClient } from './telegram/client.js';
 import { config } from './config.js';
 import { n } from './utils/format.js';
-import { loadState, PositionSnapshot, saveState } from './state/store.js';
+import { ClosedTrade, loadState, PositionSnapshot, saveState } from './state/store.js';
 import { addMsg, closeMsg, equityMsg, helpMsg, historyMsg, onlineMsg, openMsg, periodMsg, pnlUpdateMsg, reduceMsg, statusMsg, resetMsg } from './messages.js';
 
 const bitget = new BitgetClient();
@@ -144,6 +144,41 @@ function periodStart(days: number): number {
   return d.getTime();
 }
 
+function historyToClosedTrade(h: BitgetHistoryPositionRaw): ClosedTrade {
+  const openedAt = n(h.cTime || h.ctime) || Date.now();
+  const closedAt = n(h.uTime || h.utime) || Date.now();
+  const grossPnl = n(h.pnl);
+  const netProfit = n(h.netProfit);
+  const openFee = n(h.openFee);
+  const closeFee = n(h.closeFee);
+  const funding = n(h.totalFunding);
+  return {
+    key: h.positionId || `${h.symbol}:${h.holdSide}:${closedAt}`,
+    symbol: h.symbol,
+    side: h.holdSide,
+    realizedPnl: Number.isFinite(netProfit) ? netProfit : grossPnl,
+    grossPnl,
+    netProfit,
+    funding,
+    openFee,
+    closeFee,
+    source: 'bitget',
+    closedAt,
+    openedAt,
+    maxWeightPct: 0,
+    avgPrice: n(h.openAvgPrice),
+    closePrice: n(h.closeAvgPrice),
+    maxMarginSize: 0,
+    addCount: 0,
+  };
+}
+
+async function fetchExchangeClosedTrades(days: number): Promise<ClosedTrade[]> {
+  const from = periodStart(days);
+  const list = await bitget.getHistoricalPositions(from, Date.now(), 100);
+  return list.map(historyToClosedTrade).filter(t => t.closedAt >= from).sort((a, b) => a.closedAt - b.closedAt);
+}
+
 async function handleCommands() {
   const updates = await telegram.getUpdates(state.telegramOffset);
   for (const u of updates) {
@@ -164,18 +199,19 @@ async function handleCommands() {
       await telegram.sendMessage(statusMsg(positions, equity), String(msg.chat.id));
     } else if (text === '/today') {
       const { equity } = await fetchSnapshot();
-      const from = periodStart(1);
-      await telegram.sendMessage(periodMsg('📅 오늘 손익', state.closedTrades.filter(t => t.closedAt >= from), equity), String(msg.chat.id));
+      const trades = await fetchExchangeClosedTrades(1);
+      await telegram.sendMessage(periodMsg('📅 오늘 손익', trades, equity, true), String(msg.chat.id));
     } else if (text === '/week') {
       const { equity } = await fetchSnapshot();
-      const from = periodStart(7);
-      await telegram.sendMessage(periodMsg('🗓 최근 7일 손익', state.closedTrades.filter(t => t.closedAt >= from), equity), String(msg.chat.id));
+      const trades = await fetchExchangeClosedTrades(7);
+      await telegram.sendMessage(periodMsg('🗓 최근 7일 손익', trades, equity, true), String(msg.chat.id));
     } else if (text === '/month') {
       const { equity } = await fetchSnapshot();
-      const from = periodStart(30);
-      await telegram.sendMessage(periodMsg('📆 최근 30일 손익', state.closedTrades.filter(t => t.closedAt >= from), equity), String(msg.chat.id));
+      const trades = await fetchExchangeClosedTrades(30);
+      await telegram.sendMessage(periodMsg('📆 최근 30일 손익', trades, equity, true), String(msg.chat.id));
     } else if (text === '/history') {
-      await telegram.sendMessage(historyMsg(state.closedTrades), String(msg.chat.id));
+      const trades = await fetchExchangeClosedTrades(30);
+      await telegram.sendMessage(historyMsg(trades), String(msg.chat.id));
     } else if (text === '/equity') {
       const { equity } = await fetchSnapshot();
       await telegram.sendMessage(equityMsg(equity, state.equityHistory), String(msg.chat.id));

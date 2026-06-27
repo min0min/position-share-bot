@@ -45,4 +45,13 @@ export class BitgetClient {
             throw new Error(`No ${config.bitget.marginCoin} account found`);
         return found;
     }
+    async getHistoricalPositions(startTime, endTime = Date.now(), limit = 100) {
+        const first = await this.request('GET', '/api/v2/mix/position/history-position', {
+            productType: config.bitget.productType,
+            startTime: String(startTime),
+            endTime: String(endTime),
+            limit: String(Math.min(Math.max(limit, 1), 100)),
+        });
+        return first.list || [];
+    }
 }

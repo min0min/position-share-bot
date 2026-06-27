@@ -24,6 +24,32 @@ export type BitgetAccountRaw = {
   unrealizedPL: string;
 };
 
+export type BitgetHistoryPositionRaw = {
+  positionId: string;
+  symbol: string;
+  marginCoin: string;
+  holdSide: 'long' | 'short' | string;
+  openAvgPrice: string;
+  closeAvgPrice: string;
+  marginMode: string;
+  openTotalPos: string;
+  closeTotalPos: string;
+  pnl: string;
+  netProfit: string;
+  totalFunding: string;
+  openFee: string;
+  closeFee: string;
+  cTime?: string;
+  ctime?: string;
+  uTime?: string;
+  utime?: string;
+};
+
+export type BitgetHistoryPositionResponse = {
+  list: BitgetHistoryPositionRaw[];
+  endId?: string;
+};
+
 function qs(params: Record<string, string | number | undefined>): string {
   const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== '');
   return entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join('&');
@@ -71,5 +97,15 @@ export class BitgetClient {
     const found = list.find(a => a.marginCoin?.toUpperCase() === config.bitget.marginCoin.toUpperCase());
     if (!found) throw new Error(`No ${config.bitget.marginCoin} account found`);
     return found;
+  }
+
+  async getHistoricalPositions(startTime: number, endTime = Date.now(), limit = 100): Promise<BitgetHistoryPositionRaw[]> {
+    const first = await this.request<BitgetHistoryPositionResponse>('GET', '/api/v2/mix/position/history-position', {
+      productType: config.bitget.productType,
+      startTime: String(startTime),
+      endTime: String(endTime),
+      limit: String(Math.min(Math.max(limit, 1), 100)),
+    });
+    return first.list || [];
   }
 }
