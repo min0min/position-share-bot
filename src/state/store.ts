@@ -21,6 +21,18 @@ export class Store {
   positions = new Map<string, PositionState>();
   closedTrades: ClosedTrade[] = [];
   initialized = false;
+  recentEvents = new Map<string, number>();
+
+  shouldNotify(eventKey: string, cooldownMs = 60_000): boolean {
+    const now = Date.now();
+    const last = this.recentEvents.get(eventKey) ?? 0;
+    if (now - last < cooldownMs) return false;
+    this.recentEvents.set(eventKey, now);
+    for (const [key, ts] of [...this.recentEvents.entries()]) {
+      if (now - ts > 10 * 60_000) this.recentEvents.delete(key);
+    }
+    return true;
+  }
 
   key(p: Pick<Position, 'symbol' | 'side'>): string { return `${p.symbol}:${p.side}`; }
 

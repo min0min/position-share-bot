@@ -2,6 +2,19 @@ export class Store {
     positions = new Map();
     closedTrades = [];
     initialized = false;
+    recentEvents = new Map();
+    shouldNotify(eventKey, cooldownMs = 60_000) {
+        const now = Date.now();
+        const last = this.recentEvents.get(eventKey) ?? 0;
+        if (now - last < cooldownMs)
+            return false;
+        this.recentEvents.set(eventKey, now);
+        for (const [key, ts] of [...this.recentEvents.entries()]) {
+            if (now - ts > 10 * 60_000)
+                this.recentEvents.delete(key);
+        }
+        return true;
+    }
     key(p) { return `${p.symbol}:${p.side}`; }
     snapshot(list, equity) {
         const now = Date.now();

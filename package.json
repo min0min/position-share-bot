@@ -1,6 +1,6 @@
 {
   "name": "position-share-bot",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "type": "module",
   "scripts": {
     "build": "tsc",

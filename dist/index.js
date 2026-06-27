@@ -15,6 +15,10 @@ function commandName(text) {
     const first = text.trim().split(/\s+/)[0] ?? '';
     return first.replace(/@.+$/, '').toLowerCase();
 }
+function nRound(v) { return Number(v || 0).toFixed(4); }
+function eventKey(type, p, extra = '') {
+    return `${type}:${p.symbol}:${p.side}:${extra}`;
+}
 async function safeSend(text) {
     await telegram.sendMessage(config.telegramChatId, text);
 }
@@ -55,7 +59,8 @@ async function scanPositions() {
                     maxMarginRatio: prev.maxMarginRatio,
                     closedAt: Date.now()
                 });
-                await safeSend(closeEvent(prev, realizedEstimate));
+                if (store.shouldNotify(eventKey('close', prev)))
+                    await safeSend(closeEvent(prev, realizedEstimate));
                 store.positions.delete(k);
             }
         }
@@ -65,7 +70,8 @@ async function scanPositions() {
             if (!prev) {
                 const st = toState(cur, account.equity);
                 store.positions.set(k, st);
-                await safeSend(openEvent(st, account.equity));
+                if (store.shouldNotify(eventKey('open', st)))
+                    await safeSend(openEvent(st, account.equity));
                 continue;
             }
             const sizeDelta = cur.total - prev.total;
@@ -76,11 +82,13 @@ async function scanPositions() {
             if (sizeDelta > sizeThreshold || marginDelta > marginThreshold) {
                 st.addCount = prev.addCount + 1;
                 store.positions.set(k, st);
-                await safeSend(addEvent(prev, st, account.equity));
+                if (store.shouldNotify(eventKey('add', st, String(st.addCount))))
+                    await safeSend(addEvent(prev, st, account.equity));
             }
             else if (sizeDelta < -sizeThreshold || marginDelta < -marginThreshold) {
                 store.positions.set(k, st);
-                await safeSend(reduceEvent(prev, st, account.equity));
+                if (store.shouldNotify(eventKey('reduce', st, `${nRound(st.total)}:${nRound(st.marginSize)}`)))
+                    await safeSend(reduceEvent(prev, st, account.equity));
             }
             else {
                 store.positions.set(k, st);
@@ -171,7 +179,7 @@ async function pollCommands() {
     }
 }
 async function main() {
-    console.log('Position Share Bot v3.1 simple starting...');
+    console.log('Position Share Bot v3.2 final starting...');
     await scanPositions();
     while (true) {
         await Promise.all([scanPositions(), pollCommands()]);

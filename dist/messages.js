@@ -2,7 +2,6 @@ import { gauge, holdTime, money, n, pct, pnlIcon, sideIcon } from './utils/forma
 function marginRatio(p, equity) { return equity > 0 ? (p.marginSize / equity) * 100 : 0; }
 function pnlRate(p) { return p.marginSize > 0 ? (p.unrealizedPL / p.marginSize) * 100 : 0; }
 function closeTitle(pnl) { return pnl >= 0 ? '🎉 익절' : '🛑 손절'; }
-function shortSymbol(symbol) { return symbol.replace(/USDT$/i, ''); }
 export function online(account, count) {
     return [
         '✅ Position Share Bot Online',
@@ -54,7 +53,7 @@ export function positionCard(p, equity) {
     const r = marginRatio(p, equity);
     const pnlR = pnlRate(p);
     return [
-        `${sideIcon(p.side)} | ${shortSymbol(p.symbol)}`,
+        `${sideIcon(p.side)} | ${p.symbol}`,
         '━━━━━━━━━━━━━━',
         `평균가: ${n(p.averageOpenPrice, 6)}`,
         `현재가: ${n(p.markPrice, 6)}`,
@@ -67,8 +66,7 @@ export function positionCard(p, equity) {
 }
 export function openEvent(p, equity) {
     return [
-        `🚀 신규진입 | ${sideIcon(p.side)}`,
-        `💎 ${p.symbol}`,
+        `🚀 신규진입 | ${sideIcon(p.side)} | ${p.symbol}`,
         '━━━━━━━━━━━━━━',
         `진입가: ${n(p.averageOpenPrice, 6)}`,
         `현재가: ${n(p.markPrice, 6)}`,
@@ -83,8 +81,7 @@ export function addEvent(prev, cur, equity) {
     const addedSize = cur.total - prev.total;
     const addRatio = equity > 0 ? (addedMargin / equity) * 100 : 0;
     return [
-        `➕ 추가진입 ${cur.addCount}차 | ${sideIcon(cur.side)}`,
-        `💎 ${cur.symbol}`,
+        `➕ 추가진입 ${cur.addCount}차 | ${sideIcon(cur.side)} | ${cur.symbol}`,
         '━━━━━━━━━━━━━━',
         `평균가: ${n(prev.averageOpenPrice, 6)} → ${n(cur.averageOpenPrice, 6)}`,
         `현재가: ${n(cur.markPrice, 6)}`,
@@ -99,8 +96,7 @@ export function addEvent(prev, cur, equity) {
 export function reduceEvent(prev, cur, equity) {
     const reducedSize = prev.total - cur.total;
     return [
-        `➖ 부분청산 / 포지션 축소 | ${sideIcon(cur.side)}`,
-        `💎 ${cur.symbol}`,
+        `➖ 부분청산 | ${sideIcon(cur.side)} | ${cur.symbol}`,
         '━━━━━━━━━━━━━━',
         `축소 수량: ${n(reducedSize, 6)}`,
         `총 수량: ${n(prev.total, 6)} → ${n(cur.total, 6)}`,
@@ -112,8 +108,7 @@ export function reduceEvent(prev, cur, equity) {
 }
 export function closeEvent(prev, realizedEstimate) {
     return [
-        `${closeTitle(realizedEstimate)} | ${sideIcon(prev.side)}`,
-        `💎 ${prev.symbol}`,
+        `${closeTitle(realizedEstimate)} | ${sideIcon(prev.side)} | ${prev.symbol}`,
         '━━━━━━━━━━━━━━',
         `손익 금액: ${pnlIcon(realizedEstimate)} ${money(realizedEstimate)}`,
         `평균가: ${n(prev.averageOpenPrice, 6)}`,
@@ -121,7 +116,7 @@ export function closeEvent(prev, realizedEstimate) {
         `보유시간: ${holdTime(Date.now() - prev.openedAt)}`,
         `최대 비중: ${n(prev.maxMarginRatio, 2)}%`,
         '',
-        realizedEstimate < 0 ? '손절로 기록됨.' : '익절로 기록됨.'
+        realizedEstimate < 0 ? '손절 금액 표기 완료.' : '익절 금액 표기 완료.'
     ].join('\n');
 }
 export function period(title, items, equity) {
