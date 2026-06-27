@@ -1,22 +1,37 @@
-# Position Share Bot v1
+# Position Share Bot v2.0-1
 
-Bitget USDT futures position changes -> Telegram group alerts.
+Bitget USDT Futures 포지션을 텔레그램 비공개 그룹에 공유하는 봇입니다.
 
-## Features
-- 신규 진입 알림
-- 추가진입 알림
-- 부분축소 알림
-- 전체청산 알림
-- 전체 시드 대비 포지션 비중 %
-- 비중 게이지
-- `/status`, `/today`, `/week`, `/month`, `/help`, `/chatid`
+## v2.0-1 반영 기능
 
-## Railway deploy
-1. GitHub에 이 폴더 업로드
-2. Railway > New Project > Deploy from GitHub
-3. Variables에 `.env.example` 값 입력
-4. 첫 실행 후 텔레그램 그룹에서 `/chatid` 입력
-5. Railway 로그에 나온 chat_id를 `TELEGRAM_CHAT_ID`에 넣고 재배포
+- `/status` 현재 포지션 상세 출력
+- Equity / 총 증거금 / 총 비중 / 총 미실현손익 표시
+- 포지션별 LONG/SHORT, 평균가, 마크가, 수량, 레버리지 표시
+- 포지션별 시드 대비 비중 % + 게이지 표시
+- 포지션별 미실현손익 및 ROI 표시
+- 보유시간 표시
 
-## Safety
-Bitget API는 Read-only만 사용하세요. Withdraw 권한은 절대 켜지 마세요.
+## Railway Variables
+
+```env
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+BITGET_API_KEY=
+BITGET_API_SECRET=
+BITGET_API_PASSPHRASE=
+BITGET_PRODUCT_TYPE=USDT-FUTURES
+BITGET_MARGIN_COIN=USDT
+POLL_INTERVAL_MS=5000
+PNL_UPDATE_INTERVAL_MS=300000
+PNL_UPDATE_THRESHOLD_USDT=5
+```
+
+## 명령어
+
+- `/status` 현재 포지션 상세
+- `/today` 오늘 청산 손익
+- `/week` 최근 7일 청산 손익
+- `/month` 최근 30일 청산 손익
+- `/history` 최근 청산 10개
+- `/equity` 계좌 Equity 요약
+- `/chatid` 현재 방 chat_id 확인

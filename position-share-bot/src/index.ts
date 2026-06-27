@@ -3,12 +3,13 @@ import { TelegramClient } from './telegram/client.js';
 import { config } from './config.js';
 import { n } from './utils/format.js';
 import { loadState, PositionSnapshot, saveState } from './state/store.js';
-import { addMsg, closeMsg, onlineMsg, openMsg, periodMsg, reduceMsg, statusMsg } from './messages.js';
+import { addMsg, closeMsg, equityMsg, helpMsg, historyMsg, onlineMsg, openMsg, periodMsg, pnlUpdateMsg, reduceMsg, statusMsg } from './messages.js';
 
 const bitget = new BitgetClient();
 const telegram = new TelegramClient();
 const state = loadState();
 let started = false;
+let lastEquitySave = 0;
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -32,6 +33,8 @@ function toSnapshot(raw: BitgetPositionRaw, equity: number, prev?: PositionSnaps
     updatedAt: n(raw.uTime) || Date.now(),
     maxWeightPct: Math.max(prev?.maxWeightPct || 0, weightPct),
     addCount: prev?.addCount || 0,
+    lastPnlNoticeAt: prev?.lastPnlNoticeAt,
+    lastPnlNoticeValue: prev?.lastPnlNoticeValue,
   };
 }
 
@@ -43,8 +46,34 @@ async function fetchSnapshot() {
   return { equity, positions };
 }
 
+function recordEquity(equity: number) {
+  const now = Date.now();
+  if (now - lastEquitySave < 5 * 60 * 1000 && state.equityHistory.length) return;
+  state.equityHistory.push({ at: now, equity });
+  if (state.equityHistory.length > 2000) state.equityHistory = state.equityHistory.slice(-2000);
+  lastEquitySave = now;
+}
+
+function estimatedClosePnl(prev: PositionSnapshot): number {
+  // Bitget이 포지션 제거 직전 achievedProfits를 0으로 주는 경우가 있어 마지막 미실현손익을 예비값으로 사용.
+  if (Math.abs(prev.achievedProfits) > 0.000001) return prev.achievedProfits;
+  return prev.unrealizedPL;
+}
+
+async function maybeSendPnlUpdate(cur: PositionSnapshot, equity: number) {
+  const now = Date.now();
+  const lastAt = cur.lastPnlNoticeAt || 0;
+  const lastValue = cur.lastPnlNoticeValue ?? 0;
+  const enoughTime = now - lastAt >= config.bot.pnlUpdateIntervalMs;
+  const enoughMove = Math.abs(cur.unrealizedPL - lastValue) >= config.bot.pnlUpdateThresholdUsdt;
+  if (!enoughTime || !enoughMove) return cur;
+  await telegram.sendMessage(pnlUpdateMsg(cur, equity));
+  return { ...cur, lastPnlNoticeAt: now, lastPnlNoticeValue: cur.unrealizedPL };
+}
+
 async function scanPositions() {
   const { equity, positions } = await fetchSnapshot();
+  recordEquity(equity);
   const current: Record<string, PositionSnapshot> = {};
 
   if (!started) {
@@ -71,24 +100,32 @@ async function scanPositions() {
     const isReduce = sizeDelta < -Math.max(prev.total * 0.01, 0.00000001) || marginDelta < -Math.max(prev.marginSize * 0.05, 1);
 
     cur = { ...cur, addCount: isAdd ? prev.addCount + 1 : prev.addCount };
-    current[cur.key] = cur;
 
     if (isAdd) await telegram.sendMessage(addMsg(prev, cur, equity));
     else if (isReduce) await telegram.sendMessage(reduceMsg(prev, cur, equity));
+    else cur = await maybeSendPnlUpdate(cur, equity);
+
+    current[cur.key] = cur;
   }
 
   for (const [key, prev] of Object.entries(state.positions)) {
     if (!current[key]) {
+      const realizedPnl = estimatedClosePnl(prev);
       state.closedTrades.push({
         key,
         symbol: prev.symbol,
         side: prev.side,
-        realizedPnl: prev.achievedProfits,
+        realizedPnl,
         closedAt: Date.now(),
         openedAt: prev.openedAt,
         maxWeightPct: prev.maxWeightPct,
+        avgPrice: prev.avgPrice,
+        closePrice: prev.markPrice,
+        maxMarginSize: prev.marginSize,
+        addCount: prev.addCount,
       });
-      await telegram.sendMessage(closeMsg(prev, equity));
+      if (state.closedTrades.length > 1000) state.closedTrades = state.closedTrades.slice(-1000);
+      await telegram.sendMessage(closeMsg(prev, equity, realizedPnl));
     }
   }
 
@@ -120,16 +157,24 @@ async function handleCommands() {
       const { equity, positions } = await fetchSnapshot();
       await telegram.sendMessage(statusMsg(positions, equity), String(msg.chat.id));
     } else if (text === '/today') {
+      const { equity } = await fetchSnapshot();
       const from = periodStart(1);
-      await telegram.sendMessage(periodMsg('📅 오늘 손익', state.closedTrades.filter(t => t.closedAt >= from)), String(msg.chat.id));
+      await telegram.sendMessage(periodMsg('📅 오늘 손익', state.closedTrades.filter(t => t.closedAt >= from), equity), String(msg.chat.id));
     } else if (text === '/week') {
+      const { equity } = await fetchSnapshot();
       const from = periodStart(7);
-      await telegram.sendMessage(periodMsg('🗓 최근 7일 손익', state.closedTrades.filter(t => t.closedAt >= from)), String(msg.chat.id));
+      await telegram.sendMessage(periodMsg('🗓 최근 7일 손익', state.closedTrades.filter(t => t.closedAt >= from), equity), String(msg.chat.id));
     } else if (text === '/month') {
+      const { equity } = await fetchSnapshot();
       const from = periodStart(30);
-      await telegram.sendMessage(periodMsg('📆 최근 30일 손익', state.closedTrades.filter(t => t.closedAt >= from)), String(msg.chat.id));
+      await telegram.sendMessage(periodMsg('📆 최근 30일 손익', state.closedTrades.filter(t => t.closedAt >= from), equity), String(msg.chat.id));
+    } else if (text === '/history') {
+      await telegram.sendMessage(historyMsg(state.closedTrades), String(msg.chat.id));
+    } else if (text === '/equity') {
+      const { equity } = await fetchSnapshot();
+      await telegram.sendMessage(equityMsg(equity, state.equityHistory), String(msg.chat.id));
     } else if (text === '/help' || text === '/start') {
-      await telegram.sendMessage('명령어\n/status 현재 포지션\n/today 오늘 손익\n/week 최근 7일\n/month 최근 30일\n/chatid 그룹 chat_id 확인', String(msg.chat.id));
+      await telegram.sendMessage(helpMsg(), String(msg.chat.id));
     }
   }
   saveState(state);
