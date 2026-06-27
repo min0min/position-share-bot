@@ -18,7 +18,15 @@ export function pct(value: number, digits = 2): string {
 }
 
 export function sideEmoji(side: string): string {
-  return side.toLowerCase() === 'long' ? '🟢' : '🔴';
+  return side.toLowerCase() === 'long' ? '🟢📈' : '🔴📉';
+}
+
+export function sideLabel(side: string): string {
+  return side.toLowerCase() === 'long' ? 'LONG' : 'SHORT';
+}
+
+export function pnlEmoji(value: number): string {
+  return value >= 0 ? '🟢' : '🔴';
 }
 
 export function riskLabel(weightPct: number): string {

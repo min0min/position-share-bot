@@ -14,7 +14,13 @@ export function pct(value, digits = 2) {
     return `${fmt(value, digits)}%`;
 }
 export function sideEmoji(side) {
-    return side.toLowerCase() === 'long' ? '🟢' : '🔴';
+    return side.toLowerCase() === 'long' ? '🟢📈' : '🔴📉';
+}
+export function sideLabel(side) {
+    return side.toLowerCase() === 'long' ? 'LONG' : 'SHORT';
+}
+export function pnlEmoji(value) {
+    return value >= 0 ? '🟢' : '🔴';
 }
 export function riskLabel(weightPct) {
     if (weightPct < 5)
