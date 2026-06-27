@@ -36,9 +36,9 @@ export const config = {
     baseUrl: optional('BITGET_BASE_URL', 'https://api.bitget.com'),
   },
   bot: {
-    pollIntervalMs: num('POLL_INTERVAL_MS', 3000),
-    pnlUpdateIntervalMs: num('PNL_UPDATE_INTERVAL_MS', 60000),
-    pnlUpdateThresholdUsdt: num('PNL_UPDATE_THRESHOLD_USDT', 5),
+    pollIntervalMs: num('POLL_INTERVAL_MS', 2000),
+    pnlUpdateIntervalMs: num('PNL_UPDATE_INTERVAL_MS', 30000),
+    pnlUpdateThresholdUsdt: num('PNL_UPDATE_THRESHOLD_USDT', 2),
     timezone: optional('TIMEZONE', 'Asia/Seoul'),
   },
 };

@@ -1,14 +1,20 @@
-# Position Share Bot v2.0-5
+# Position Share Bot v2.1 UI Perfect
 
-UI 개선 버전.
+반영 내용:
+- LONG: 🟢📈 / SHORT: 🔴📉 표시
+- 마크가 문구 제거, 현재가로 표기
+- 현재 포지션 Dashboard 카드형 UI 개선
+- 신규진입 / 추가진입 / 부분청산 / 전체청산 / 손절 알림 UI 개선
+- 손절 시 손절 금액 표기
+- 기본 스캔 주기 2초, PnL 업데이트 30초/2USDT 기준
 
-## 변경사항
-- LONG: 🟢📈 표시
-- SHORT: 🔴📉 표시
-- `마크가` 문구를 `현재가`로 변경
-- `/status`, 포지션 업데이트, 신규/추가/축소/청산 메시지 가독성 개선
-- 손익 양수/음수에 따라 🟢/🔴 표시
-- 비중/게이지/리스크 표기 정리
+배포:
+1. 기존 GitHub 파일 덮어쓰기
+2. Commit
+3. Railway 자동 배포
+4. /status 테스트
 
-## 배포
-기존처럼 GitHub에 덮어쓰기 후 Commit → Railway 자동 배포.
+선택 변수:
+- POLL_INTERVAL_MS=2000
+- PNL_UPDATE_INTERVAL_MS=30000
+- PNL_UPDATE_THRESHOLD_USDT=2
