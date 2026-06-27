@@ -1,7 +1,7 @@
 {
   "name": "position-share-bot",
-  "version": "2.1.0",
-  "description": "Bitget futures position sharing Telegram bot v2.1 UI",
+  "version": "2.3.0",
+  "description": "Bitget futures position sharing Telegram bot v2.3 event-only notifications",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {

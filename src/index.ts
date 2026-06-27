@@ -3,7 +3,7 @@ import { TelegramClient } from './telegram/client.js';
 import { config } from './config.js';
 import { n } from './utils/format.js';
 import { ClosedTrade, loadState, PositionSnapshot, saveState } from './state/store.js';
-import { addMsg, closeMsg, equityMsg, helpMsg, historyMsg, onlineMsg, openMsg, periodMsg, pnlUpdateMsg, reduceMsg, statusMsg, resetMsg } from './messages.js';
+import { addMsg, closeMsg, equityMsg, helpMsg, historyMsg, onlineMsg, openMsg, periodMsg, reduceMsg, statusMsg, resetMsg } from './messages.js';
 
 const bitget = new BitgetClient();
 const telegram = new TelegramClient();
@@ -60,21 +60,8 @@ function estimatedClosePnl(prev: PositionSnapshot): number {
   return prev.unrealizedPL;
 }
 
-async function maybeSendPnlUpdate(cur: PositionSnapshot, equity: number) {
-  const now = Date.now();
-
-  // 첫 관측값은 기준점으로만 저장한다. 재배포 직후 불필요한 업데이트 알림이 연속 발송되는 것을 막기 위함.
-  if (!cur.lastPnlNoticeAt || cur.lastPnlNoticeValue === undefined) {
-    return { ...cur, lastPnlNoticeAt: now, lastPnlNoticeValue: cur.unrealizedPL };
-  }
-
-  const enoughTime = now - cur.lastPnlNoticeAt >= config.bot.pnlUpdateIntervalMs;
-  const enoughMove = Math.abs(cur.unrealizedPL - cur.lastPnlNoticeValue) >= config.bot.pnlUpdateThresholdUsdt;
-  if (!enoughTime || !enoughMove) return cur;
-  await telegram.sendMessage(pnlUpdateMsg(cur, equity));
-  return { ...cur, lastPnlNoticeAt: now, lastPnlNoticeValue: cur.unrealizedPL };
-}
-
+// 일반 홀딩 중 PnL 변동은 알림을 보내지 않습니다.
+// 신규진입/추가진입/부분청산/전체청산 같은 실제 포지션 변화만 알림 전송.
 async function scanPositions() {
   const { equity, positions } = await fetchSnapshot();
   recordEquity(equity);
@@ -107,7 +94,10 @@ async function scanPositions() {
 
     if (isAdd) await telegram.sendMessage(addMsg(prev, cur, equity));
     else if (isReduce) await telegram.sendMessage(reduceMsg(prev, cur, equity));
-    else cur = await maybeSendPnlUpdate(cur, equity);
+    else {
+      // 홀딩 중 단순 현재가/미실현손익 변동은 조용히 상태만 갱신한다.
+      cur = { ...cur, lastPnlNoticeAt: prev.lastPnlNoticeAt, lastPnlNoticeValue: prev.lastPnlNoticeValue };
+    }
 
     current[cur.key] = cur;
   }
