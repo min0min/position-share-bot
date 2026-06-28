@@ -1,20 +1,28 @@
-# Position Share Bot v3.2 FINAL
+# Position Share Bot v3.3 Event Fix
 
-실사용형 텔레그램 포지션 공유봇입니다.
+텔레그램 비공개 그룹에서 Bitget USDT Futures 포지션을 공유하는 봇입니다.
 
-## 핵심 반영
-- /status는 기존처럼 요약 + 종목별 메시지 분리
-- 종목명은 H/O가 아니라 HUSDT/OUSDT처럼 전체 심볼 표기
-- 신규진입 / 추가진입 / 부분청산 / 익절 / 손절 이벤트 알림
-- 단순 홀딩 중 반복 업데이트 없음
-- 중복 알림 방지 쿨다운 적용
-- 마크가 대신 현재가 표기
+## v3.3 수정 사항
 
-## Railway Variables
-- TELEGRAM_BOT_TOKEN
-- TELEGRAM_CHAT_ID
-- BITGET_API_KEY
-- BITGET_API_SECRET 또는 BITGET_SECRET_KEY
-- BITGET_API_PASSPHRASE 또는 BITGET_PASSPHRASE
-- BITGET_PRODUCT_TYPE=USDT-FUTURES
-- BITGET_MARGIN_COIN=USDT
+- 추가진입/부분청산 오탐 수정
+- 수량이 변하지 않으면 알림을 보내지 않음
+- 증거금, 현재가, 미실현손익만 변하는 경우는 조용히 상태만 갱신
+- `추가 수량: 0`, `축소 수량: 0` 알림 방지
+- 중복 알림 방지 유지
+- `/status` UI는 v3.2 형태 유지
+
+## 배포
+
+GitHub 루트에 이 ZIP 안쪽 파일들을 올리고 Railway에서 재배포하세요.
+
+필요 환경변수:
+
+```
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+BITGET_API_KEY=
+BITGET_API_SECRET=
+BITGET_API_PASSPHRASE=
+BITGET_PRODUCT_TYPE=USDT-FUTURES
+SCAN_INTERVAL_MS=2000
+```

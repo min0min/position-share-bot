@@ -85,17 +85,24 @@ async function scanPositions() {
       const sizeDelta = cur.total - prev.total;
       const marginDelta = cur.marginSize - prev.marginSize;
       let st = toState(cur, account.equity, prev);
-      const sizeThreshold = Math.max(prev.total * 0.001, 0.0000001);
-      const marginThreshold = Math.max(prev.marginSize * 0.01, 0.1);
 
-      if (sizeDelta > sizeThreshold || marginDelta > marginThreshold) {
+      // IMPORTANT:
+      // Bitget marginSize can move even while the actual position size is unchanged
+      // because mark price / margin recalculation changes.
+      // So add/reduce events MUST be based on quantity(total) changes only.
+      // This prevents false alerts such as "추가 수량: 0" or "축소 수량: 0".
+      const sizeThreshold = Math.max(Math.abs(prev.total) * 0.002, 0.0000001);
+
+      if (sizeDelta > sizeThreshold) {
         st.addCount = prev.addCount + 1;
         store.positions.set(k, st);
-        if (store.shouldNotify(eventKey('add', st, String(st.addCount)))) await safeSend(addEvent(prev, st, account.equity));
-      } else if (sizeDelta < -sizeThreshold || marginDelta < -marginThreshold) {
+        if (store.shouldNotify(eventKey('add', st, `${st.addCount}:${nRound(st.total)}`))) await safeSend(addEvent(prev, st, account.equity));
+      } else if (sizeDelta < -sizeThreshold) {
         store.positions.set(k, st);
-        if (store.shouldNotify(eventKey('reduce', st, `${nRound(st.total)}:${nRound(st.marginSize)}`))) await safeSend(reduceEvent(prev, st, account.equity));
+        if (store.shouldNotify(eventKey('reduce', st, `${nRound(st.total)}`))) await safeSend(reduceEvent(prev, st, account.equity));
       } else {
+        // Quantity unchanged: update live price/pnl/margin silently only.
+        // No Telegram notification for simple mark-price, margin, or PnL movement.
         store.positions.set(k, st);
       }
     }
@@ -167,7 +174,7 @@ async function pollCommands() {
 }
 
 async function main() {
-  console.log('Position Share Bot v3.2 final starting...');
+  console.log('Position Share Bot v3.3 event-fix starting...');
   await scanPositions();
   while (true) {
     await Promise.all([scanPositions(), pollCommands()]);
