@@ -14,7 +14,7 @@ function envAny(names) {
 }
 export const config = {
     telegramToken: env('TELEGRAM_BOT_TOKEN'),
-    telegramChatId: env('TELEGRAM_CHAT_ID'),
+    telegramChatIds: envAny(['TELEGRAM_CHAT_IDS', 'TELEGRAM_CHAT_ID']).split(',').map(x => x.trim()).filter(Boolean),
     bitgetKey: env('BITGET_API_KEY'),
     bitgetSecret: envAny(['BITGET_API_SECRET', 'BITGET_SECRET_KEY']),
     bitgetPassphrase: envAny(['BITGET_API_PASSPHRASE', 'BITGET_PASSPHRASE']),

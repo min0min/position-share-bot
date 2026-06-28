@@ -20,7 +20,14 @@ function eventKey(type, p, extra = '') {
     return `${type}:${p.symbol}:${p.side}:${extra}`;
 }
 async function safeSend(text) {
-    await telegram.sendMessage(config.telegramChatId, text);
+    for (const chatId of config.telegramChatIds) {
+        try {
+            await telegram.sendMessage(chatId, text);
+        }
+        catch (err) {
+            console.error(`[telegram] send failed chatId=${chatId}:`, err?.message ?? err);
+        }
+    }
 }
 function toState(p, equity, prev) {
     const ratio = equity > 0 ? (p.marginSize / equity) * 100 : 0;
@@ -172,7 +179,7 @@ async function pollCommands() {
             const text = u.message?.text ?? '';
             if (!text.startsWith('/'))
                 continue;
-            if (chatId !== config.telegramChatId)
+            if (!config.telegramChatIds.includes(chatId))
                 continue;
             await handleCommand(commandName(text));
         }
@@ -185,7 +192,7 @@ async function pollCommands() {
     }
 }
 async function main() {
-    console.log('Position Share Bot v3.3 event-fix starting...');
+    console.log('Position Share Bot v3.4 multi-chat starting...');
     await scanPositions();
     while (true) {
         await Promise.all([scanPositions(), pollCommands()]);

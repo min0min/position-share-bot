@@ -25,7 +25,13 @@ function eventKey(type: string, p: Pick<PositionState, 'symbol' | 'side'>, extra
 }
 
 async function safeSend(text: string) {
-  await telegram.sendMessage(config.telegramChatId, text);
+  for (const chatId of config.telegramChatIds) {
+    try {
+      await telegram.sendMessage(chatId, text);
+    } catch (err: any) {
+      console.error(`[telegram] send failed chatId=${chatId}:`, err?.message ?? err);
+    }
+  }
 }
 
 function toState(p: Position, equity: number, prev?: PositionState): PositionState {
@@ -163,7 +169,7 @@ async function pollCommands() {
       const chatId = String(u.message?.chat?.id ?? '');
       const text = u.message?.text ?? '';
       if (!text.startsWith('/')) continue;
-      if (chatId !== config.telegramChatId) continue;
+      if (!config.telegramChatIds.includes(chatId)) continue;
       await handleCommand(commandName(text));
     }
   } catch (err: any) {
@@ -174,7 +180,7 @@ async function pollCommands() {
 }
 
 async function main() {
-  console.log('Position Share Bot v3.3 event-fix starting...');
+  console.log('Position Share Bot v3.4 multi-chat starting...');
   await scanPositions();
   while (true) {
     await Promise.all([scanPositions(), pollCommands()]);

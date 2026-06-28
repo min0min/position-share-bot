@@ -26,3 +26,12 @@ BITGET_API_PASSPHRASE=
 BITGET_PRODUCT_TYPE=USDT-FUTURES
 SCAN_INTERVAL_MS=2000
 ```
+
+
+## v3.4 multi-chat
+
+- `TELEGRAM_CHAT_IDS` 지원 추가
+- 예: `TELEGRAM_CHAT_IDS=-5321098136,-5461219317`
+- 기존 `TELEGRAM_CHAT_ID`도 fallback으로 지원
+- 명령어는 등록된 그룹에서만 응답
+- 알림은 등록된 모든 그룹으로 전송
